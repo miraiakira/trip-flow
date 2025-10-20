@@ -13,7 +13,7 @@ const authStore = useAuthStore();
           Provident cupiditate voluptatem et in. Quaerat fugiat ut assumenda excepturi exercitationem
           quasi. In deleniti eaque aut repudiandae et a id nisi.
         </p>
-        <AuthButton v-if="!authStore" />
+        <AuthButton v-if="!authStore.user" />
         <NuxtLink v-else class="btn btn-primary" to="/dashboard">
           Start Loggin
         </NuxtLink>
