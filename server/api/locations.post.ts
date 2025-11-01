@@ -1,5 +1,9 @@
-import db from "~/lib/db";
-import { InsertLocation, location } from "~/lib/db/schema";
+import type { DrizzleError } from "drizzle-orm";
+
+import slugify from "slug";
+
+import { findLocationByName, findUniqueSlug, insertLocation } from "~/lib/db/queries/location";
+import { InsertLocation } from "~/lib/db/schema";
 
 export default defineEventHandler(async (event) => {
   if (!event.context.user) {
@@ -25,11 +29,26 @@ export default defineEventHandler(async (event) => {
     }));
   }
 
-  const [created] = await db.insert(location).values({
-    ...result.data,
-    slug: result.data.name.replaceAll(" ", "-").toLowerCase(),
-    userId: event.context.user.id, // 这里是 number，不需要再转换
-  }).returning();
+  const existingLocation = await findLocationByName(result.data, event.context.user.id);
 
-  return created;
+  if (existingLocation) {
+    return sendError(event, createError({
+      statusCode: 409,
+      statusMessage: "Location already exists",
+    }));
+  }
+
+  const slug = await findUniqueSlug(slugify(result.data.name));
+
+  try {
+    return insertLocation(result.data, slug, event.context.user.id);
+  }
+  catch (e) {
+    const error = e as DrizzleError;
+    console.error("Insert Error: ", error.message);
+    return sendError(event, createError({
+      statusCode: 409,
+      statusMessage: "db error",
+    }));
+  }
 });
